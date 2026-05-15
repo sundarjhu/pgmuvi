@@ -7,7 +7,6 @@ conform to the policy.  Remove the decorator when the corresponding
 violation is fixed.
 """
 
-import io
 import tempfile
 import unittest
 
@@ -21,18 +20,6 @@ from pgmuvi.synthetic import (
     make_multi_sinusoid_chromatic_2d,
     make_simple_sinusoid_1d,
 )
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _write_csv(path, rows, header="time,flux,flux_err"):
-    """Write a minimal CSV file to *path*."""
-    with open(path, "w") as fh:
-        fh.write(header + "\n")
-        for row in rows:
-            fh.write(",".join(str(v) for v in row) + "\n")
 
 
 # ---------------------------------------------------------------------------
@@ -281,8 +268,6 @@ class TestIntegerBoolDtype(unittest.TestCase):
         numeric tensor.  Uses a 2-D lightcurve because per-row band labels
         are the natural use case for that path.
         """
-        import numpy as np
-
         # Build a minimal 2-D (time x wavelength) light curve with two bands.
         n = 10
         t = np.linspace(0, 10, n)
