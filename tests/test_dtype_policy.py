@@ -284,5 +284,114 @@ class TestIntegerBoolDtype(unittest.TestCase):
         self.assertNotIsInstance(lc.band, torch.Tensor)
 
 
+# ---------------------------------------------------------------------------
+# 6. Explicit .double() conversion
+# ---------------------------------------------------------------------------
+
+
+class TestDoubleCastDtype(unittest.TestCase):
+    """Calling .double() should promote all floating tensors to float64."""
+
+    def _make_float32_lc(self):
+        t = torch.linspace(0, 100, 30, dtype=torch.float32)
+        y = torch.sin(2 * torch.pi * t / 20.0)
+        yerr = torch.full((30,), 0.1, dtype=torch.float32)
+        return Lightcurve(t, y, yerr=yerr)
+
+    def test_double_xdata_is_float64(self):
+        """lc.double().xdata must be float64."""
+        lc = self._make_float32_lc().double()
+        self.assertEqual(lc.xdata.dtype, torch.float64)
+
+    def test_double_ydata_is_float64(self):
+        """lc.double().ydata must be float64."""
+        lc = self._make_float32_lc().double()
+        self.assertEqual(lc.ydata.dtype, torch.float64)
+
+    def test_double_yerr_is_float64(self):
+        """lc.double().yerr must be float64."""
+        lc = self._make_float32_lc().double()
+        self.assertEqual(lc.yerr.dtype, torch.float64)
+
+    @unittest.expectedFailure
+    def test_double_acf_lag_is_float64(self):
+        """lc.double().acf() lag tensor must be float64.
+
+        Policy: ACF output must preserve the owning Lightcurve's dtype.
+        Currently fails because _acf_data always calls .float() before
+        returning, downcasting float64 ACF output to float32.
+        """
+        lc = self._make_float32_lc().double()
+        result = lc.acf(method="data", n_lags=10)
+        self.assertEqual(result.lag.dtype, torch.float64)
+
+    @unittest.expectedFailure
+    def test_double_acf_values_is_float64(self):
+        """lc.double().acf() acf tensor must be float64.
+
+        Policy: ACF output must preserve the owning Lightcurve's dtype.
+        Currently fails because _acf_data always calls .float() before
+        returning, downcasting float64 ACF output to float32.
+        """
+        lc = self._make_float32_lc().double()
+        result = lc.acf(method="data", n_lags=10)
+        self.assertEqual(result.acf.dtype, torch.float64)
+
+
+# ---------------------------------------------------------------------------
+# 7. Explicit .float() conversion
+# ---------------------------------------------------------------------------
+
+
+class TestFloatCastDtype(unittest.TestCase):
+    """Calling .float() should keep (or convert) all floating tensors to float32.
+
+    These tests must pass now and must continue to pass after the dtype refactor
+    so that users who explicitly opt into float32 are not silently broken.
+    """
+
+    def _make_float64_lc(self):
+        t = torch.linspace(0, 100, 30, dtype=torch.float64)
+        y = torch.sin(2 * torch.pi * t / 20.0)
+        yerr = torch.full((30,), 0.1, dtype=torch.float64)
+        return Lightcurve(t, y, yerr=yerr)
+
+    def test_float_xdata_is_float32(self):
+        """lc.float().xdata must be float32."""
+        lc = self._make_float64_lc().float()
+        self.assertEqual(lc.xdata.dtype, torch.float32)
+
+    def test_float_ydata_is_float32(self):
+        """lc.float().ydata must be float32."""
+        lc = self._make_float64_lc().float()
+        self.assertEqual(lc.ydata.dtype, torch.float32)
+
+    def test_float_yerr_is_float32(self):
+        """lc.float().yerr must be float32."""
+        lc = self._make_float64_lc().float()
+        self.assertEqual(lc.yerr.dtype, torch.float32)
+
+    def test_float_acf_lag_is_float32(self):
+        """lc.float().acf() lag tensor must be float32.
+
+        The current implementation always casts ACF output to float32 via
+        ``.float()``, so this is coincidentally correct today.  This test
+        guards the behaviour so that any future dtype-aware refactor does not
+        accidentally break the float32 round-trip.
+        """
+        lc = self._make_float64_lc().float()
+        result = lc.acf(method="data", n_lags=10)
+        self.assertEqual(result.lag.dtype, torch.float32)
+
+    def test_float_acf_values_is_float32(self):
+        """lc.float().acf() acf tensor must be float32.
+
+        Same rationale as ``test_float_acf_lag_is_float32``.
+        """
+        lc = self._make_float64_lc().float()
+        result = lc.acf(method="data", n_lags=10)
+        self.assertEqual(result.acf.dtype, torch.float32)
+
+
 if __name__ == "__main__":
     unittest.main()
